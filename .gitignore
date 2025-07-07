@@ -29,3 +29,7 @@
 
 # Running tests leaves *.spv files in the root directory.
 *.spv
+
+# Zig
+.zig-cache
+zig-out

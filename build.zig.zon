@@ -1,6 +1,7 @@
 .{
     .name = .spirv_tools,
     .version = "0.1.0",
+    .fingerprint = 0xba03d7cd296bcd53,
     .paths = .{
         ".",
         "generated-include",

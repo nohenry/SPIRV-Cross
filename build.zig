@@ -60,100 +60,95 @@ pub fn build(b: *Build) !void {
     // SPIRV-Cross
     // ------------------
 
-    var lib: *std.Build.Step.Compile = undefined;
+    const spirv_cross_mod = b.createModule(.{
+        .optimize = optimize,
+        .target = target,
+        .link_libcpp = true,
+    });
+    const lib = b.addLibrary(.{
+        .name = "spirv-cross",
+        .linkage = if (shared) .dynamic else .static,
+        .root_module = spirv_cross_mod,
+    });
 
     if (shared) {
-        lib = b.addSharedLibrary(.{
-            .name = "spirv-cross",
-            .optimize = optimize,
-            .target = target,
-        });
-
         if (target.result.os.tag == .windows) {
-            lib.defineCMacro("SPVC_PUBLIC_API", "__declspec(dllexport)");
+            spirv_cross_mod.addCMacro("SPVC_PUBLIC_API", "__declspec(dllexport)");
         } else {
-            lib.defineCMacro("SPVC_PUBLIC_API", "__attribute__((visibility(\"default\")))");
+            spirv_cross_mod.addCMacro("SPVC_PUBLIC_API", "__attribute__((visibility(\"default\")))");
         }
-    } else {
-        lib = b.addStaticLibrary(.{
-            .name = "spirv-cross",
-            .optimize = optimize,
-            .target = target,
-        });
     }
 
     if (force_stl_types) {
-        lib.defineCMacro("SPIRV_CROSS_FORCE_STL_TYPES", "");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_FORCE_STL_TYPES", "");
     }
 
     if (exceptions_to_assertions) {
-        lib.defineCMacro("SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS", "");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS", "");
         try cppflags.append("-fno-exceptions");
     }
 
     const sources = spirv_cross_core_sources ++
         spirv_cross_c_sources;
 
-    lib.addCSourceFiles(.{
+    spirv_cross_mod.addCSourceFiles(.{
         .files = &sources,
         .flags = cppflags.items,
     });
 
     if (!disable_glsl) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_glsl_sources,
             .flags = cppflags.items,
         });
 
-        lib.defineCMacro("SPIRV_CROSS_C_API_GLSL", "1");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_C_API_GLSL", "1");
     }
 
     if (!disable_hlsl) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_hlsl_sources,
             .flags = cppflags.items,
         });
 
-        lib.defineCMacro("SPIRV_CROSS_C_API_HLSL", "1");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_C_API_HLSL", "1");
     }
 
     if (!disable_msl) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_msl_sources,
             .flags = cppflags.items,
         });
 
-        lib.defineCMacro("SPIRV_CROSS_C_API_MSL", "1");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_C_API_MSL", "1");
     }
 
     if (!disable_cpp) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_cpp_sources,
             .flags = cppflags.items,
         });
 
-        lib.defineCMacro("SPIRV_CROSS_C_API_CPP", "1");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_C_API_CPP", "1");
     }
 
     if (!disable_reflect) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_reflect_sources,
             .flags = cppflags.items,
         });
 
-        lib.defineCMacro("SPIRV_CROSS_C_API_REFLECT", "1");
+        spirv_cross_mod.addCMacro("SPIRV_CROSS_C_API_REFLECT", "1");
     }
 
     if (!disable_util) {
-        lib.addCSourceFiles(.{
+        spirv_cross_mod.addCSourceFiles(.{
             .files = &spirv_cross_util_sources,
             .flags = cppflags.items,
         });
     }
 
-    lib.addIncludePath(b.path("."));
-
-    lib.linkLibCpp();
+    spirv_cross_mod.addIncludePath(b.path("."));
 
     const install_cross_step = b.step("SPIRV-Cross", "Build and install SPIRV-Cross");
     install_cross_step.dependOn(&b.addInstallArtifact(lib, .{}).step);
